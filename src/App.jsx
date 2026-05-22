@@ -357,7 +357,10 @@ export default function CoffeePairingQuiz() {
       setFadeIn(false);
       setTimeout(() => {
         if (currentQ + 1 >= TOTAL_QUESTIONS) {
-          const best = Object.entries(newScores).sort((a, b) => b[1] - a[1])[0][0];
+          const sorted = Object.entries(newScores).sort((a, b) => b[1] - a[1]);
+          const topScore = sorted[0][1];
+          const tied = sorted.filter(([, v]) => v === topScore);
+          const best = tied[Math.floor(Math.random() * tied.length)][0];
           setResult(best);
           setReasonText(buildReasonText(best, newTags));
           setPhase("result");
@@ -469,7 +472,7 @@ export default function CoffeePairingQuiz() {
 
           {/* RESULT */}
           {phase === "result" && pairingData && (
-            <div>
+            <div id="result-card">
               {/* Emoji & title */}
               <div style={{ textAlign: "center", marginBottom: 18 }}>
                 <p style={{ fontSize: 10, letterSpacing: 3, textTransform: "uppercase", color: "rgba(245,237,227,0.38)", margin: "0 0 6px" }}>YOUR PAIRING</p>
@@ -549,25 +552,102 @@ export default function CoffeePairingQuiz() {
                 </div>
               </div>
 
-              {/* Hashtag */}
-              <div style={{ textAlign: "center", padding: "12px 0", marginBottom: 14, borderTop: "1px solid rgba(245,237,227,0.07)" }}>
-                <p style={{ fontSize: 11, color: "rgba(245,237,227,0.3)", margin: "0 0 3px", letterSpacing: 1 }}>結果をシェアしよう</p>
-                <p style={{ fontSize: 12, color: "#C4954A", margin: 0 }}>#SandaCoffeeFest #ペアリング診断</p>
-              </div>
+              {/* ======= シェアセクション ======= */}
+              {(() => {
+                const shareText = `☕ 私のペアリングは「${pairingData.concept}」\n${pairingData.tagline.replace(/\n/g, "")}\n\n${pairingData.coffee.roaster}の${pairingData.coffee.name.replace(/\n/g, " ")} × ${pairingData.food.shop}の${pairingData.food.name.replace(/\n/g, " ")}\n\n#SandaCoffeeFest #ペアリング診断\nhttps://pairing-quiz.vercel.app`;
+                const encodedText = encodeURIComponent(shareText);
 
-              {/* Buttons */}
-              <div style={{ display: "flex", gap: 10 }}>
-                <button onClick={restart} style={{ ...BtnBase, flex: 1, background: "transparent", border: "1px solid rgba(245,237,227,0.18)", borderRadius: 40, padding: "13px 0", color: "#F5EDE3", fontSize: 13 }}>
-                  もう一度やる
-                </button>
-                <button onClick={() => {
-                  const text = `☕ 私のペアリングは「${pairingData.concept}」\n${pairingData.tagline.replace(/\n/g, "")}\n\n${pairingData.coffee.roaster}の${pairingData.coffee.name.replace(/\n/g, " ")} × ${pairingData.food.shop}の${pairingData.food.name.replace(/\n/g, " ")}\n\n#SandaCoffeeFest #ペアリング診断`;
-                  if (navigator.share) { navigator.share({ text }).catch(() => {}); }
-                  else { navigator.clipboard.writeText(text).then(() => alert("コピーしました！")); }
-                }} style={{ ...BtnBase, flex: 1, background: "linear-gradient(135deg,#C4954A,#9A7030)", color: "#1a1108", borderRadius: 40, padding: "13px 0", fontSize: 13, fontWeight: 700 }}>
-                  シェアする
-                </button>
-              </div>
+                const handleScreenshot = async () => {
+                  try {
+                    const html2canvas = (await import("html2canvas")).default;
+                    const target = document.getElementById("result-card");
+                    const canvas = await html2canvas(target, { backgroundColor: "#1a1108", scale: 2, useCORS: true });
+                    const link = document.createElement("a");
+                    link.download = "pairing-result.png";
+                    link.href = canvas.toDataURL("image/png");
+                    link.click();
+                  } catch (e) {
+                    alert("画像の保存に失敗しました");
+                  }
+                };
+
+                const iconBg = "rgba(245,237,227,0.08)";
+                const iconBorder = "1px solid rgba(245,237,227,0.15)";
+                const iconColor = "rgba(245,237,227,0.75)";
+
+                return (
+                  <div style={{ borderTop: "1px solid rgba(245,237,227,0.07)", paddingTop: 20, marginBottom: 16 }}>
+                    <p style={{ fontSize: 11, color: "rgba(245,237,227,0.4)", letterSpacing: 1, textAlign: "center", margin: "0 0 14px" }}>結果をシェアしよう</p>
+
+                    {/* SNSシェアボタン */}
+                    <div style={{ display: "flex", justifyContent: "center", gap: 12, marginBottom: 16 }}>
+                      {/* X */}
+                      <a href={`https://twitter.com/intent/tweet?text=${encodedText}`} target="_blank" rel="noopener noreferrer"
+                        style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 5, textDecoration: "none" }}>
+                        <div style={{ width: 48, height: 48, borderRadius: "50%", background: iconBg, border: iconBorder, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                          <svg width="20" height="20" viewBox="0 0 24 24" fill={iconColor}><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.744l7.737-8.835L1.254 2.25H8.08l4.258 5.63 5.906-5.63zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+                        </div>
+                        <span style={{ fontSize: 10, color: "rgba(245,237,227,0.4)" }}>X</span>
+                      </a>
+                      {/* LINE */}
+                      <a href={`https://social-plugins.line.me/lineit/share?url=${encodeURIComponent("https://pairing-quiz.vercel.app")}&text=${encodedText}`} target="_blank" rel="noopener noreferrer"
+                        style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 5, textDecoration: "none" }}>
+                        <div style={{ width: 48, height: 48, borderRadius: "50%", background: iconBg, border: iconBorder, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                          <svg width="24" height="24" viewBox="0 0 24 24" fill={iconColor}><path d="M12 2C6.48 2 2 6.08 2 11.1c0 3.05 1.61 5.76 4.12 7.49L5.16 22l3.64-1.95c.99.27 2.04.42 3.2.42 5.52 0 10-4.08 10-9.1S17.52 2 12 2zm1.12 12.26l-2.55-2.72-4.98 2.72 5.48-5.83 2.61 2.72 4.91-2.72-5.47 5.83z"/></svg>
+                        </div>
+                        <span style={{ fontSize: 10, color: "rgba(245,237,227,0.4)" }}>LINE</span>
+                      </a>
+                      {/* Facebook */}
+                      <a href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent("https://pairing-quiz.vercel.app")}`} target="_blank" rel="noopener noreferrer"
+                        style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 5, textDecoration: "none" }}>
+                        <div style={{ width: 48, height: 48, borderRadius: "50%", background: iconBg, border: iconBorder, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                          <svg width="22" height="22" viewBox="0 0 24 24" fill={iconColor}><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
+                        </div>
+                        <span style={{ fontSize: 10, color: "rgba(245,237,227,0.4)" }}>Facebook</span>
+                      </a>
+                      {/* スクショ保存 */}
+                      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 5 }}>
+                        <button onClick={handleScreenshot} style={{ ...BtnBase, width: 48, height: 48, borderRadius: "50%", background: iconBg, border: iconBorder, display: "flex", alignItems: "center", justifyContent: "center", padding: 0 }}>
+                          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={iconColor} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                            <polyline points="7 10 12 15 17 10"/>
+                            <line x1="12" y1="15" x2="12" y2="3"/>
+                          </svg>
+                        </button>
+                        <span style={{ fontSize: 10, color: "rgba(245,237,227,0.4)" }}>保存</span>
+                      </div>
+                    </div>
+
+                    {/* シェアテキスト */}
+                    <div style={{ background: "rgba(245,237,227,0.04)", border: "1px solid rgba(245,237,227,0.08)", borderRadius: 10, padding: "12px 14px", marginBottom: 10 }}>
+                      <p style={{ fontSize: 11, color: "rgba(245,237,227,0.4)", margin: "0 0 6px", letterSpacing: 1 }}>シェア用テキスト</p>
+                      <p style={{ fontSize: 12, color: "rgba(245,237,227,0.7)", margin: "0 0 10px", lineHeight: 1.7, whiteSpace: "pre-line" }}>{shareText}</p>
+                      <button onClick={() => {
+                        navigator.clipboard.writeText(shareText).then(() => alert("コピーしました！"));
+                      }} style={{ ...BtnBase, width: "100%", background: "rgba(245,237,227,0.08)", border: "1px solid rgba(245,237,227,0.15)", borderRadius: 8, padding: "9px 0", color: "#F5EDE3", fontSize: 12 }}>
+                        テキストをコピー
+                      </button>
+                    </div>
+
+                    {/* インスタフォロー */}
+                    <a href="https://www.instagram.com/sandacoffeefest/" target="_blank" rel="noopener noreferrer" style={{ textDecoration: "none" }}>
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 10, background: "rgba(245,237,227,0.04)", border: "1px solid rgba(245,237,227,0.08)", borderRadius: 10, padding: "13px 16px" }}>
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                          <rect x="2" y="2" width="20" height="20" rx="5" ry="5" stroke="rgba(245,237,227,0.6)" strokeWidth="2" fill="none"/>
+                          <circle cx="12" cy="12" r="5" stroke="rgba(245,237,227,0.6)" strokeWidth="2" fill="none"/>
+                          <circle cx="17.5" cy="6.5" r="1" fill="rgba(245,237,227,0.6)"/>
+                        </svg>
+                        <span style={{ fontSize: 13, color: "rgba(245,237,227,0.7)", fontWeight: 500 }}>@sandacoffeefest をフォローする</span>
+                      </div>
+                    </a>
+                  </div>
+                );
+              })()}
+
+              {/* もう一度やるボタン */}
+              <button onClick={restart} style={{ ...BtnBase, width: "100%", background: "transparent", border: "1px solid rgba(245,237,227,0.18)", borderRadius: 40, padding: "13px 0", color: "#F5EDE3", fontSize: 13 }}>
+                もう一度やる
+              </button>
             </div>
           )}
         </div>
